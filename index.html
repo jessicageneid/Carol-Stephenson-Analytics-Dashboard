@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carol — GeneID Performance Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js">
+function toggleHS(rowId, facRow) {
+  var panel = document.getElementById(rowId);
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  facRow.classList.toggle('expanded', !isOpen);
+}
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 50%,#FDF4FF 100%);min-height:100vh;color:#0F172A}
+.topbar{background:linear-gradient(135deg,#1E3A5F 0%,#059669 100%);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 20px rgba(0,0,0,.25)}
+.topbar-left h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:2px}
+.topbar-left p{font-size:11px;color:rgba(255,255,255,.6)}
+.topbar-right{text-align:right}
+.topbar-right .big-num{font-size:28px;font-weight:700;color:#fff;line-height:1}
+.topbar-right .big-lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em}
+.wrap{max-width:1140px;margin:0 auto;padding:24px 20px}
+.nav{display:flex;gap:2px;border-bottom:2px solid #E2E8F0;margin-bottom:20px;background:#fff;border-radius:12px 12px 0 0;padding:6px 6px 0;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.ntab{padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:#64748B;border-bottom:3px solid transparent;margin-bottom:-2px;border-radius:8px 8px 0 0;transition:all .2s}
+.ntab.on{color:#059669;border-bottom-color:#059669;background:#05966918}
+.ntab:hover:not(.on){color:#059669;background:#F8FAFF}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:#059669}
+.kl{font-size:10px;color:#64748B;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:600}
+.kv{font-size:23px;font-weight:700;line-height:1.1;color:#0F172A}
+.ks{font-size:10px;color:#94A3B8;margin-top:3px}
+.card{background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:16px 18px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.ct{font-size:12px;font-weight:700;color:#0F172A;margin-bottom:12px;letter-spacing:.01em}
+.cw{position:relative;width:100%}
+.leg{display:flex;flex-wrap:wrap;gap:10px;font-size:10px;color:#64748B;margin-bottom:10px;font-weight:500}
+.lsq{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:3px;vertical-align:middle}
+.section-label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin:20px 0 10px;display:flex;align-items:center;gap:6px}
+.section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#CBD5E1,transparent)}
+.bright-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.bright-tbl thead tr{background:linear-gradient(135deg,#1E3A5F,#059669)}
+.bright-tbl th{text-align:left;padding:8px 10px;font-weight:700;color:#fff;border:none;font-size:10px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.bright-tbl td{padding:7px 10px;border-bottom:1px solid #F1F5F9;color:#0F172A;white-space:nowrap}
+.bright-tbl tbody tr:hover td{background:#EFF6FF}
+.bright-tbl tfoot td{border-top:2px solid #BFDBFE}
+.rh{text-align:left;font-weight:600;color:#374151;background:#F8FAFC;border-right:2px solid #E2E8F0;min-width:160px}
+.tc{text-align:right}.fw{font-weight:700}
+.row-alt td{background:#FAFBFF}
+.tblwrap{overflow-x:auto}
+.dip-badge{display:inline-flex;align-items:center;font-size:9px;padding:3px 8px;border-radius:20px;background:#FEE2E2;color:#DC2626;font-weight:700;margin-top:6px;border:1px solid #FECACA}
+.alert-box{background:linear-gradient(135deg,#FFF5F5,#FEF2F2);border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px}
+.alert-box .icon{font-size:15px;line-height:1.6}
+.alert-box .txt{font-size:11px;color:#1C1917;line-height:1.6}
+@media(max-width:700px){.g4{grid-template-columns:1fr 1fr}.g2,.g3{grid-template-columns:1fr}}
+
+.hs-toggle-row { display: none; }
+.hs-toggle-row.open { display: table-row; }
+.fac-expandable { cursor: pointer; user-select: none; }
+.fac-expandable:hover td { background: #EFF6FF !important; }
+.hs-chevron { display: inline-block; margin-left: 6px; font-size: 10px; color: #A16207; transition: transform .2s; }
+.fac-expandable.expanded .hs-chevron { transform: rotate(180deg); }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>📊 Carol Stephenson</h1>
+    <p>Account Manager &nbsp;·&nbsp; GeneID Performance Dashboard &nbsp;·&nbsp; Jan–May 2026</p>
+  </div>
+  <div class="topbar-right">
+    <div class="big-num">37.3%</div>
+    <div class="big-lbl">Approval rate</div>
+  </div>
+</div>
+<div class="wrap">
+<div class="nav">
+  <button class="ntab on" onclick="go('ov')">Overview</button>
+  <button class="ntab" onclick="go('gts')">GTS Reps</button>
+  <button class="ntab" onclick="go('fac')">Facilities</button>
+  <button class="ntab" onclick="go('pay')">Payers</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="p-ov">
+  <div class="g4">
+    <div class="kpi"><div class="kl">Total received</div><div class="kv">1,401</div><div class="ks">LIS submissions YTD</div></div>
+    <div class="kpi"><div class="kl">Total approved</div><div class="kv" style="color:#059669">523</div><div class="ks">Jan–May 2026</div></div>
+    <div class="kpi"><div class="kl">GTS reps</div><div class="kv">12</div><div class="ks">Active in portfolio</div></div>
+    <div class="kpi"><div class="kl">Facilities</div><div class="kv">10</div><div class="ks">Across 2 states</div></div>
+  </div>
+  
+  <div class="g2">
+    <div class="card">
+      <div class="ct">Monthly volume — submissions &amp; approvals</div>
+      <div class="leg"><span><span class="lsq" style="background:#05966955"></span>Received</span><span><span class="lsq" style="background:#059669"></span>Approved</span></div>
+      <div class="cw" style="height:210px"><canvas id="c-trend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Product mix — approved submissions</div>
+      <div id="pm-leg" class="leg"></div>
+      <div class="cw" style="height:190px"><canvas id="c-pmix"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">Approval rate trend — Jan to May 2026</div>
+    <div class="cw" style="height:160px"><canvas id="c-rate"></canvas></div>
+  </div>
+  <div class="section-label">Month-by-month performance</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">Month</th><th class="tc">Received</th><th class="tc">Approved</th>
+        <th class="tc">Rate</th><th class="tc">NBP</th><th class="tc">PVT</th><th class="tc">PGX</th>
+        <th class="tc">GTS Active</th><th class="tc">Facilities</th><th class="tc">vs prev</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)">
+          <td class="rh fw" style="color:#1E40AF">TOTAL</td>
+          <td class="tc fw">1,401</td><td class="tc fw" style="color:#059669">523</td>
+          <td class="tc fw" style="color:#D97706">37.3%</td>
+          <td class="tc fw">399</td><td class="tc fw">455</td><td class="tc fw">547</td>
+          <td class="tc">—</td><td class="tc">—</td><td class="tc">—</td>
+        </tr></tfoot><tbody><tr class=""><td class="rh">Jan</td>
+                  <td class="tc">215</td>
+                  <td class="tc" style="color:#059669;font-weight:600">88</td>
+                  <td class="tc" style="color:#D97706;font-weight:700">40.9%</td>
+                  <td class="tc">54</td><td class="tc">58</td><td class="tc">103</td>
+                  <td class="tc">8</td><td class="tc">7</td>
+                  <td class="tc"></td></tr><tr class="row-alt"><td class="rh">Feb</td>
+                  <td class="tc">280</td>
+                  <td class="tc" style="color:#059669;font-weight:600">109</td>
+                  <td class="tc" style="color:#DC2626;font-weight:700">38.9%</td>
+                  <td class="tc">83</td><td class="tc">95</td><td class="tc">102</td>
+                  <td class="tc">12</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#059669;font-size:9px;font-weight:700">▲30%</span></td></tr><tr class=""><td class="rh">Mar</td>
+                  <td class="tc">353</td>
+                  <td class="tc" style="color:#059669;font-weight:600">144</td>
+                  <td class="tc" style="color:#D97706;font-weight:700">40.8%</td>
+                  <td class="tc">104</td><td class="tc">111</td><td class="tc">138</td>
+                  <td class="tc">9</td><td class="tc">9</td>
+                  <td class="tc"><span style="color:#059669;font-size:9px;font-weight:700">▲26%</span></td></tr><tr class="row-alt"><td class="rh">Apr</td>
+                  <td class="tc">305</td>
+                  <td class="tc" style="color:#059669;font-weight:600">116</td>
+                  <td class="tc" style="color:#DC2626;font-weight:700">38.0%</td>
+                  <td class="tc">82</td><td class="tc">107</td><td class="tc">116</td>
+                  <td class="tc">8</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#DC2626;font-size:9px;font-weight:700">▼14%</span></td></tr><tr class=""><td class="rh">May</td>
+                  <td class="tc">248</td>
+                  <td class="tc" style="color:#059669;font-weight:600">66</td>
+                  <td class="tc" style="color:#DC2626;font-weight:700">26.6%</td>
+                  <td class="tc">76</td><td class="tc">84</td><td class="tc">88</td>
+                  <td class="tc">8</td><td class="tc">8</td>
+                  <td class="tc"><span style="color:#DC2626;font-size:9px;font-weight:700">▼19%</span></td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- GTS REPS -->
+<div id="p-gts" style="display:none">
+  <div class="section-label">GTS reps — performance by rep</div>
+  <div class="g2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="ct">Volume by GTS rep</div>
+      <div class="cw" style="height:220px"><canvas id="c-gts-bar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Approval rate by GTS rep</div>
+      <div class="cw" style="height:220px"><canvas id="c-gts-rate"></canvas></div>
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">GTS Rep</th><th class="tc">Received</th><th class="tc">Approved</th>
+        <th class="tc">Rate</th><th class="tc">Share</th>
+        <th class="tc">Jan</th><th class="tc">Feb</th><th class="tc">Mar</th><th class="tc">Apr</th><th class="tc">May</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)">
+          <td class="rh fw" style="color:#1E40AF">TOTAL</td>
+          <td class="tc fw">1,401</td><td class="tc fw" style="color:#059669">523</td>
+          <td class="tc fw" style="color:#D97706">37.3%</td>
+          <td class="tc fw">—</td>
+          <td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td><td class="tc fw"></td>
+        </tr></tfoot><tbody><tr class="">
+              <td class="rh fw">Anissa Gurule</td>
+              <td class="tc fw" style="color:#1E40AF">396</td>
+              <td class="tc" style="color:#059669">139</td>
+              <td class="tc fw" style="color:#DC2626">35.1%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:28%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">28%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#DC2626;font-weight:600">107</td><td class="tc" style="color:#DC2626;font-weight:600">95</td><td class="tc" style="color:#D97706;font-weight:600">109</td><td class="tc" style="color:#DC2626;font-weight:600">85</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Leeann Roper</td>
+              <td class="tc fw" style="color:#1E40AF">188</td>
+              <td class="tc" style="color:#059669">78</td>
+              <td class="tc fw" style="color:#D97706">41.5%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:13%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">13%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#D97706;font-weight:600">8</td><td class="tc" style="color:#D97706;font-weight:600">82</td><td class="tc" style="color:#D97706;font-weight:600">52</td><td class="tc" style="color:#DC2626;font-weight:600">46</td>
+            </tr><tr class="">
+              <td class="rh fw">Haley Parker</td>
+              <td class="tc fw" style="color:#1E40AF">179</td>
+              <td class="tc" style="color:#059669">59</td>
+              <td class="tc fw" style="color:#DC2626">33.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:13%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">13%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">34</td><td class="tc" style="color:#DC2626;font-weight:600">32</td><td class="tc" style="color:#D97706;font-weight:600">50</td><td class="tc" style="color:#D97706;font-weight:600">27</td><td class="tc" style="color:#DC2626;font-weight:600">36</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Jennifer Hollingsworth</td>
+              <td class="tc fw" style="color:#1E40AF">148</td>
+              <td class="tc" style="color:#059669">58</td>
+              <td class="tc fw" style="color:#DC2626">39.2%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:11%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">11%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">19</td><td class="tc" style="color:#D97706;font-weight:600">37</td><td class="tc" style="color:#D97706;font-weight:600">38</td><td class="tc" style="color:#DC2626;font-weight:600">33</td><td class="tc" style="color:#D97706;font-weight:600">21</td>
+            </tr><tr class="">
+              <td class="rh fw">Morgan Murnyack</td>
+              <td class="tc fw" style="color:#1E40AF">142</td>
+              <td class="tc" style="color:#059669">60</td>
+              <td class="tc fw" style="color:#D97706">42.3%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:10%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">10%</span>
+              </div></td>
+              <td class="tc" style="color:#D97706;font-weight:600">21</td><td class="tc" style="color:#D97706;font-weight:600">33</td><td class="tc" style="color:#D97706;font-weight:600">33</td><td class="tc" style="color:#DC2626;font-weight:600">29</td><td class="tc" style="color:#DC2626;font-weight:600">26</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Summer Wray</td>
+              <td class="tc fw" style="color:#1E40AF">130</td>
+              <td class="tc" style="color:#059669">43</td>
+              <td class="tc fw" style="color:#DC2626">33.1%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:9%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">9%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">12</td><td class="tc" style="color:#DC2626;font-weight:600">17</td><td class="tc" style="color:#D97706;font-weight:600">32</td><td class="tc" style="color:#DC2626;font-weight:600">45</td><td class="tc" style="color:#DC2626;font-weight:600">24</td>
+            </tr><tr class="">
+              <td class="rh fw">Carol Stephenson</td>
+              <td class="tc fw" style="color:#1E40AF">74</td>
+              <td class="tc" style="color:#059669">20</td>
+              <td class="tc fw" style="color:#DC2626">27.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:5%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">5%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">46</td><td class="tc" style="color:#DC2626;font-weight:600">14</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#DC2626;font-weight:600">9</td><td class="tc" style="color:#059669;font-weight:600">5</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Katie Craig</td>
+              <td class="tc fw" style="color:#1E40AF">59</td>
+              <td class="tc" style="color:#059669">36</td>
+              <td class="tc fw" style="color:#059669">61.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:4%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">4%</span>
+              </div></td>
+              <td class="tc" style="color:#059669;font-weight:600">32</td><td class="tc" style="color:#D97706;font-weight:600">17</td><td class="tc" style="color:#059669;font-weight:600">10</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr><tr class="">
+              <td class="rh fw">Kaylie Jones</td>
+              <td class="tc fw" style="color:#1E40AF">38</td>
+              <td class="tc" style="color:#059669">18</td>
+              <td class="tc fw" style="color:#D97706">47.4%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:3%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">3%</span>
+              </div></td>
+              <td class="tc" style="color:#D97706;font-weight:600">37</td><td class="tc" style="color:#059669;font-weight:600">1</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Lindsay Nance</td>
+              <td class="tc fw" style="color:#1E40AF">25</td>
+              <td class="tc" style="color:#059669">7</td>
+              <td class="tc fw" style="color:#DC2626">28.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:2%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">2%</span>
+              </div></td>
+              <td class="tc" style="color:#DC2626;font-weight:600">14</td><td class="tc" style="color:#DC2626;font-weight:600">7</td><td class="tc" style="color:#DC2626;font-weight:600">4</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr><tr class="">
+              <td class="rh fw">Trista Jones</td>
+              <td class="tc fw" style="color:#1E40AF">18</td>
+              <td class="tc" style="color:#059669">3</td>
+              <td class="tc fw" style="color:#DC2626">16.7%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:1%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">1%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#DC2626;font-weight:600">3</td><td class="tc" style="color:#DC2626;font-weight:600">9</td><td class="tc" style="color:#DC2626;font-weight:600">1</td><td class="tc" style="color:#DC2626;font-weight:600">5</td>
+            </tr><tr class="row-alt">
+              <td class="rh fw">Family Medical Clinic of Trezevant</td>
+              <td class="tc fw" style="color:#1E40AF">4</td>
+              <td class="tc" style="color:#059669">2</td>
+              <td class="tc fw" style="color:#D97706">50.0%</td>
+              <td class="tc"><div style="display:flex;align-items:center;gap:5px">
+                <div style="flex:1;background:#F1F5F9;border-radius:3px;height:6px">
+                  <div style="width:0%;background:#059669;height:6px;border-radius:3px"></div></div>
+                <span style="font-size:9px;color:#64748B;width:28px;text-align:right">0%</span>
+              </div></td>
+              <td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#D97706;font-weight:600">4</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td><td class="tc" style="color:#CBD5E1">—</td>
+            </tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- FACILITIES -->
+<div id="p-fac" style="display:none">
+  <div class="section-label">Facility performance</div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="tblwrap">
+    <table class="bright-tbl">
+      <thead><tr>
+        <th class="rh">Facility</th><th class="tc">State</th><th class="tc">Received</th>
+        <th class="tc">Approved</th><th class="tc">Rate</th>
+        <th class="tc">NBP</th><th class="tc">PVT</th><th class="tc">PGX</th>
+      </tr></thead>
+      <tfoot><tr style="background:linear-gradient(90deg,#EFF6FF,#F0FDF4)"><td class="rh fw" style="color:#1E40AF">TOTAL</td><td class="tc fw">—</td><td class="tc fw">1,401</td><td class="tc fw" style="color:#059669">523</td><td class="tc fw" style="color:#DC2626">37.3%</td><td class="tc fw">—</td><td class="tc fw">—</td><td class="tc fw">—</td></tr></tfoot><tbody><tr class=" fac-expandable" onclick="toggleHS('hs-panel-0', this)"><td class="rh" style="">Aligned Health Of Murray &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">KY</td><td class="tc fw" style="color:#1E40AF">446</td><td class="tc" style="color:#059669;font-weight:600">149</td><td class="tc fw" style="color:#DC2626">33.4%</td><td class="tc">134</td><td class="tc">157</td><td class="tc">155</td></tr><tr id="hs-panel-7" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">60</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">2</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">2</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">I’d like to continue improving how I explain complex genetic concepts in a simpler more relatable way. I also want to work on time management during patient. Interactions additional training on communication strategies for patient. Education would be helpful especially for handling objections or confusion. Regular feedback on my performance and guidance on areas to improve would really be helpful. | I'd like to continue improving how I explain complex genetic concepts in a simpler, more relatable way. I also want to work on time management during patient interactions. Additional training on communication strategies for patient education would be helpful, especially for handling objections or confusion. Regular feedback on my performance and guidance on areas to improve would be really helpful.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">This is one of my best accounts. We work so well with the provider, office managers in staff. Anissa does a phenomenal job making sure she sees every patient who is eligible. | Aligned is one of our best performing accounts. The staff is amazing to work with and Anissa is doing a phenomenal job.</div></div></div></div></td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-1', this)"><td class="rh" style="">Restorative Family Medicine &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">KY</td><td class="tc fw" style="color:#1E40AF">190</td><td class="tc" style="color:#059669;font-weight:600">78</td><td class="tc fw" style="color:#D97706">41.1%</td><td class="tc">75</td><td class="tc">68</td><td class="tc">47</td></tr><tr id="hs-panel-6" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">54</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">2</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">3</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Getting more familiar with generic name versus brand name on medication’s. The next steps and how to approach the patient with positive test results. I feel my support system is amazing. | Getting more familiar with the generic name vs. brand name on medications;The next steps and how to approach the patient with positive test results;I feel my support system is amazing.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Leeann does a phenomenal job of training and maintaining workflow and respect with the main provider and owner Cari. She does everything to ensure she screens every patient that is eligible. | Lee Ann does a fantastic job maintaining workflow with Cari and the rest of the staff. She goes above and beyond to reach every patient she can. | Lee Ann does a great job managing the workflow with Cari. She goes above and beyond to exceed testing expectations. | I can't say enough good things about RFM. Lee Ann is doing a great job and the provider/owner of the clinic is pleased with our genetic testing.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-2', this)"><td class="rh" style="">Hometown Health Clinic Camden &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">185</td><td class="tc" style="color:#059669;font-weight:600">63</td><td class="tc fw" style="color:#DC2626">34.1%</td><td class="tc">59</td><td class="tc">39</td><td class="tc">87</td></tr><tr id="hs-panel-5" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">17</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">2</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS | Met with HCP</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Maintaining daily test, log patient list minimize missed opportunities. Continue supporting me the way you have. | Maintaining daily test log patient list, minimize missed opportunities, continue supporting me the way you have.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Haley has an excellent relationship with both the providers and the clinical staff. They have faced some challenges with one of the main providers husbands being in the ICU for the past month. Haley maintains great test volume and a great working atmosphere and attitude. | Haley does an excellent job. She has a great relationship with the providers and is a great communicator.</div></div></div></div></td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-3', this)"><td class="rh" style="">Hometown Health Clinic Mckenzie &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">172</td><td class="tc" style="color:#059669;font-weight:600">61</td><td class="tc fw" style="color:#DC2626">35.5%</td><td class="tc">35</td><td class="tc">48</td><td class="tc">89</td></tr><tr id="hs-panel-4" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">105</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">6</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">7</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS | Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Adapted workflow</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Root cause</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">MR delays</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Unsure, I've been working on obstacles as above. Maybe going over insurances and being more aware of those. Also keeping patient log updated has been a challenge but I've made a lot of progress on time management for that as well.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">We have hired a new GTS for this clinic who will start on May 19. I will also be hosting a lunch for the clinic as we launch testing at another one of their locations. | This is our main Hometown account. We have just hired a new GTS who will start 5/19. I am so planning a breakfast for the clinic as we prepare to open another testing site. | We have made a few changes at this high volume clinic. We just hired a new GTS for this account who will start 5/19. I plan on providing the clinic a lunch as we launch the start of screening at their next location.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-4', this)"><td class="rh" style="">Lakeside Health Clinic &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">150</td><td class="tc" style="color:#059669;font-weight:600">59</td><td class="tc fw" style="color:#DC2626">39.3%</td><td class="tc">21</td><td class="tc">64</td><td class="tc">65</td></tr><tr id="hs-panel-3" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">51</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">3</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support | Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Uploading medical records correctly, in office visit to shadow coach on this, nothing extra needed at this time | Uploading MRs correctly, in-office visit to shadow/coach on this | Uploading MRs correctly, in-office visit to shadow/coach on this;Nothing extra needed at this time.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Jennifer has had some issues uploading medical records, but they seem to be working well now. A little coaching in technology was needed | We've maintained this account for quite some time now and still have  a great working relationship with the owner/providers. Jennifer does a great job maintaining a great relationship with them as well.</div></div></div></div></td></tr><tr class="row-alt fac-expandable" onclick="toggleHS('hs-panel-5', this)"><td class="rh" style="">Abc Medical &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">142</td><td class="tc" style="color:#059669;font-weight:600">60</td><td class="tc fw" style="color:#D97706">42.3%</td><td class="tc">44</td><td class="tc">56</td><td class="tc">42</td></tr><tr id="hs-panel-2" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#FAFBFF"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">21</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">2</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">4</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Escalated coaching support</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">We are still consistently seeing new patients, and the numbers of new patient volume is growing monthly as of right now Having great Mondays and Tuesdays- but Wed- Fri is a lot slower during the week, especially Friday when our main provider is out Everything is still great workflow wise I am working on going through status reports to find high deductible denials to rescreen closer to the end of the year or at a follow up visit- I am well supported by Carol and Trista</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Trista needs to review the DLS - so many inaccuracies Martin/Morgan: From GTS standpoint, Morgan is great at her job and responsibilities at the clinic. She has very few, if any, corrections which show she is thorough in her screenings. The clinic she is at has started offering aesthetic services and so there is an increase of foot traffic through this clinic;but we need to come up with a way for Morgan to be able to reach out to them about our services to help increase  "screen-able" volume for her. Her numbers did drop from March total 33 to April total of 29. She was absent a few times on her usually "busiest days" so that did negatively impact her numbers for April.  However, when she is at work, Morgan does not miss patients to screen, so we need to come up with something to get more patients in there for her.</div></div></div></div></td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-6', this)"><td class="rh" style="">Family Medical Clinic Of Trezevant &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">76</td><td class="tc" style="color:#059669;font-weight:600">40</td><td class="tc fw" style="color:#D97706">52.6%</td><td class="tc">16</td><td class="tc">13</td><td class="tc">47</td></tr><tr id="hs-panel-1" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">50</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Screenable</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Declined</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">27</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">27</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">New Pts</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS | Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Adapted workflow</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Root cause</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Provider engagement low</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">GTS Feedback</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Trista has been covering this clinic until recently since we moved summer rain through this area. We are hoping numbers will improve now that we have a full-time GTS at this account | Uploading MRs correctly, in-office visit to shadow/coach on this</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">Numbers should improve now that  have a full-time GTS training in this clinic. | We've maintained this account for quite some time now and still have  a great working relationship with the owner/providers. We just moved GTS Summer Wray to this clinic to work full time. | We've maintained this account for quite some time now and still have  a great working relationship with the owner/providers.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Strengths</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">knowledgeable about process and products</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Areas for Improvement</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">communicating with provider on qualified patients you want to screen, utilizing the tools and coaching feedback that has been provided to you, and timeliness in responding to others, getting test specimens out, and uploading MRs/provider signatures.</div></div><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">Goals</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">get a lot more test submissions, maintain/update DTLs daily and correctly, continue to minimize missed opportunities by being proactive in the clinic not missing qualified patients and not being absent if possible.</div></div></div></div></td></tr><tr class="row-alt"><td class="rh" style="color:#05966960">Family Medical Clinic Of Jackson</td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">25</td><td class="tc" style="color:#059669;font-weight:600">7</td><td class="tc fw" style="color:#DC2626">28.0%</td><td class="tc">8</td><td class="tc">5</td><td class="tc">12</td></tr><tr class=" fac-expandable" onclick="toggleHS('hs-panel-7', this)"><td class="rh" style="">Priority Health &#128203; <span class="hs-chevron">&#9660;</span></td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">14</td><td class="tc" style="color:#059669;font-weight:600">6</td><td class="tc fw" style="color:#D97706">42.9%</td><td class="tc">6</td><td class="tc">5</td><td class="tc">3</td></tr><tr id="hs-panel-0" class="hs-toggle-row"><td colspan="8" style="padding:0 10px 8px;white-space:normal;background:#fff"><div style="background:linear-gradient(135deg,#FFFBEB,#FEF3C7);border:1px solid #FCD34D;border-radius:10px;padding:12px 14px;margin:6px 0"><div style="font-size:11px;font-weight:700;color:#92400E;margin-bottom:8px">&#128203; HubSpot Notes &mdash; <span style="font-weight:500;color:#666">Carol Stephenson</span></div><div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"><div style="display:inline-flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #FCD34D;border-radius:8px;padding:5px 12px;min-width:58px"><span style="font-size:17px;font-weight:700;color:#92400E">0</span><span style="font-size:8px;color:#A16207;text-transform:uppercase">Missed</span></div></div><div style="margin-bottom:8px"><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Met with HCP</span><span style="display:inline-block;font-size:9px;padding:2px 8px;border-radius:20px;font-weight:700;background:#FEF3C7;color:#92400E;margin:2px;border:1px solid #FCD34D">Shadowed & Coached GTS</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;color:#A16207;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px">AM Overview</div><div style="font-size:11px;color:#1C1917;line-height:1.6;white-space:normal;word-wrap:break-word">I have been screening part time now for three weeks at priority health. Dr. Hanks is pleased with our services. I’m going to see about hiring a RN to cover this Clinic in hope we can make it a full-time GTS position.</div></div></div></div></td></tr><tr class="row-alt"><td class="rh" style="color:#05966960">Tri-country Family Clinic, Pllc</td><td class="tc" style="color:#64748B">TN</td><td class="tc fw" style="color:#1E40AF">1</td><td class="tc" style="color:#059669;font-weight:600">0</td><td class="tc fw" style="color:#DC2626">0.0%</td><td class="tc">1</td><td class="tc">0</td><td class="tc">0</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAYERS -->
+<div id="p-pay" style="display:none">
+  <div class="section-label">Payer approval rates</div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct">Top payers — approval rate</div>
+      <div class="cw" style="height:230px"><canvas id="c-payer-bar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Payer breakdown</div>
+      <div class="tblwrap">
+      <table class="bright-tbl">
+        <thead><tr><th class="rh">Payer</th><th class="tc">Received</th><th class="tc">Approved</th><th class="tc">Rate</th></tr></thead>
+        <tbody><tr class="">
+              <td class="rh">Tennessee BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">376</td>
+              <td class="tc" style="color:#059669">107</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:28.5%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">28.5%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Anthem BCBS KY</td>
+              <td class="tc fw" style="color:#1E40AF">235</td>
+              <td class="tc" style="color:#059669">76</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:32.3%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">32.3%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Anthem BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">170</td>
+              <td class="tc" style="color:#059669">43</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:25.3%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">25.3%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Anthem</td>
+              <td class="tc fw" style="color:#1E40AF">103</td>
+              <td class="tc" style="color:#059669">39</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:37.9%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">37.9%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Medicare</td>
+              <td class="tc fw" style="color:#1E40AF">102</td>
+              <td class="tc" style="color:#059669">86</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:84.3%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">84.3%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Illinois BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">41</td>
+              <td class="tc" style="color:#059669">27</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:65.9%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">65.9%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">UMR</td>
+              <td class="tc fw" style="color:#1E40AF">28</td>
+              <td class="tc" style="color:#059669">12</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:42.9%;background:#D97706;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#D97706;width:38px;text-align:right">42.9%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">Arkansas BCBS</td>
+              <td class="tc fw" style="color:#1E40AF">23</td>
+              <td class="tc" style="color:#059669">5</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:21.7%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">21.7%</span>
+                </div>
+              </td>
+            </tr><tr class="">
+              <td class="rh">Ambetter</td>
+              <td class="tc fw" style="color:#1E40AF">21</td>
+              <td class="tc" style="color:#059669">13</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:61.9%;background:#059669;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#059669;width:38px;text-align:right">61.9%</span>
+                </div>
+              </td>
+            </tr><tr class="row-alt">
+              <td class="rh">United Healthcare</td>
+              <td class="tc fw" style="color:#1E40AF">17</td>
+              <td class="tc" style="color:#059669">0</td>
+              <td class="tc">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="flex:1;background:#F1F5F9;border-radius:3px;height:7px;overflow:hidden">
+                    <div style="width:0.0%;background:#DC2626;height:7px;border-radius:3px"></div></div>
+                  <span style="font-size:10px;font-weight:700;color:#DC2626;width:38px;text-align:right">0.0%</span>
+                </div>
+              </td>
+            </tr></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const ML=["Jan", "Feb", "Mar", "Apr", "May"];
+const MONTHLY=[{"received":215,"approved":88,"appr_rate":40.9,"nbp":54,"pvt":58,"pgx":103,"facilities":7,"gts_active":8},{"received":280,"approved":109,"appr_rate":38.9,"nbp":83,"pvt":95,"pgx":102,"facilities":8,"gts_active":12},{"received":353,"approved":144,"appr_rate":40.8,"nbp":104,"pvt":111,"pgx":138,"facilities":9,"gts_active":9},{"received":305,"approved":116,"appr_rate":38.0,"nbp":82,"pvt":107,"pgx":116,"facilities":8,"gts_active":8},{"received":248,"approved":66,"appr_rate":26.6,"nbp":76,"pvt":84,"pgx":88,"facilities":8,"gts_active":8}];
+const GTS_DATA=[{"name":"Anissa Gurule","received":396,"approved":139,"appr_rate":35.1,"facilities":1,"states":1,"nbp":115,"pvt":138,"pgx":143,"monthly":[null,[107,42,39.3],[95,31,32.6],[109,46,42.2],[85,20,23.5]]},{"name":"Leeann Roper","received":188,"approved":78,"appr_rate":41.5,"facilities":1,"states":1,"nbp":74,"pvt":68,"pgx":46,"monthly":[null,[8,4,50.0],[82,34,41.5],[52,23,44.2],[46,17,37.0]]},{"name":"Haley Parker","received":179,"approved":59,"appr_rate":33.0,"facilities":1,"states":1,"nbp":57,"pvt":38,"pgx":84,"monthly":[[34,9,26.5],[32,9,28.1],[50,24,48.0],[27,12,44.4],[36,5,13.9]]},{"name":"Jennifer Hollingsworth","received":148,"approved":58,"appr_rate":39.2,"facilities":1,"states":1,"nbp":21,"pvt":63,"pgx":64,"monthly":[[19,6,31.6],[37,16,43.2],[38,17,44.7],[33,9,27.3],[21,10,47.6]]},{"name":"Morgan Murnyack","received":142,"approved":60,"appr_rate":42.3,"facilities":1,"states":1,"nbp":44,"pvt":56,"pgx":42,"monthly":[[21,11,52.4],[33,18,54.5],[33,15,45.5],[29,8,27.6],[26,8,30.8]]},{"name":"Summer Wray","received":130,"approved":43,"appr_rate":33.1,"facilities":2,"states":1,"nbp":29,"pvt":39,"pgx":62,"monthly":[[12,7,58.3],[17,5,29.4],[32,13,40.6],[45,15,33.3],[24,3,12.5]]},{"name":"Carol Stephenson","received":74,"approved":20,"appr_rate":27.0,"facilities":5,"states":2,"nbp":28,"pvt":25,"pgx":21,"monthly":[[46,13,28.3],[14,1,7.1],null,[9,3,33.3],[5,3,60.0]]},{"name":"Katie Craig","received":59,"approved":36,"appr_rate":61.0,"facilities":1,"states":1,"nbp":12,"pvt":10,"pgx":37,"monthly":[[32,20,62.5],[17,9,52.9],[10,7,70.0],null,null]},{"name":"Kaylie Jones","received":38,"approved":18,"appr_rate":47.4,"facilities":1,"states":1,"nbp":6,"pvt":9,"pgx":23,"monthly":[[37,17,45.9],[1,1,100.0],null,null,null]},{"name":"Lindsay Nance","received":25,"approved":7,"appr_rate":28.0,"facilities":1,"states":1,"nbp":8,"pvt":5,"pgx":12,"monthly":[[14,5,35.7],[7,1,14.3],[4,1,25.0],null,null]},{"name":"Trista Jones","received":18,"approved":3,"appr_rate":16.7,"facilities":4,"states":1,"nbp":4,"pvt":4,"pgx":10,"monthly":[null,[3,1,33.3],[9,2,22.2],[1,0,0.0],[5,0,0.0]]},{"name":"Family Medical Clinic of Trezevant","received":4,"approved":2,"appr_rate":50.0,"facilities":1,"states":1,"nbp":1,"pvt":0,"pgx":3,"monthly":[null,[4,2,50.0],null,null,null]}];
+const COL='#059669';
+let CH={};
+function kc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function go(t){
+  ['ov','gts','fac','pay'].forEach(id=>document.getElementById('p-'+id).style.display=id===t?'':'none');
+  document.querySelectorAll('.ntab').forEach((el,i)=>el.classList.toggle('on',['ov','gts','fac','pay'][i]===t));
+  if(t==='gts')renderGTS();
+  if(t==='pay')renderPayer();
+}
+function renderOV(){
+  const recv=MONTHLY.map(m=>m?m.received:0);
+  const appr=MONTHLY.map(m=>m?m.approved:0);
+  const rates=MONTHLY.map(m=>m?m.appr_rate:null);
+  kc('trend');CH['trend']=new Chart(document.getElementById('c-trend'),{type:'bar',
+    data:{labels:ML,datasets:[
+      {label:'Received',data:recv,backgroundColor:COL+'44',borderColor:COL,borderWidth:1.5},
+      {label:'Approved',data:appr,backgroundColor:COL+'CC'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:9},boxWidth:9}},tooltip:{mode:'index'}},
+    scales:{x:{ticks:{font:{size:10},autoSkip:false}},y:{ticks:{font:{size:10}}}}}
+  });
+  const pmix={"NBP":399,"PVT":455,"PGX":547};
+  const pmK=Object.keys(pmix),pmV=Object.values(pmix),pmT=pmV.reduce((a,b)=>a+b,0)||1;
+  const pmC=['#378ADD','#1D9E75','#7F77DD'];
+  document.getElementById('pm-leg').innerHTML=pmK.map((l,i)=>'<span><span class="lsq" style="background:'+pmC[i]+'"></span>'+l+' '+Math.round(pmV[i]/pmT*100)+'%</span>').join('');
+  kc('pmix');CH['pmix']=new Chart(document.getElementById('c-pmix'),{type:'doughnut',
+    data:{labels:pmK,datasets:[{data:pmV,backgroundColor:pmC,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}
+  });
+  kc('rate');CH['rate']=new Chart(document.getElementById('c-rate'),{type:'line',
+    data:{labels:ML,datasets:[{label:'Approval rate %',data:rates,borderColor:COL,backgroundColor:COL+'18',
+      tension:0.4,fill:true,pointRadius:5,pointBackgroundColor:COL,pointBorderColor:'#fff',pointBorderWidth:2,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:10},autoSkip:false}},y:{ticks:{font:{size:10},callback:v=>v+'%'}}}}
+  });
+}
+function renderGTS(){
+  if(CH['gts-bar'])return;
+  const shortNames=GTS_DATA.map(g=>g.name.split(' ').slice(0,2).join(' '));
+  kc('gts-bar');CH['gts-bar']=new Chart(document.getElementById('c-gts-bar'),{type:'bar',
+    data:{labels:shortNames,datasets:[
+      {label:'Approved',data:GTS_DATA.map(g=>g.approved),backgroundColor:COL+'CC'},
+      {label:'Unapproved',data:GTS_DATA.map(g=>g.received-g.approved),backgroundColor:'#E2E8F066'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:9},boxWidth:9}},tooltip:{mode:'index'}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{ticks:{font:{size:9}}}}}
+  });
+  kc('gts-rate');CH['gts-rate']=new Chart(document.getElementById('c-gts-rate'),{type:'bar',
+    data:{labels:shortNames,datasets:[{label:'Approval %',data:GTS_DATA.map(g=>g.appr_rate),
+      backgroundColor:GTS_DATA.map(g=>g.appr_rate>=60?'#059669CC':g.appr_rate>=45?COL+'CC':'#DC2626CC')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:35}},y:{ticks:{font:{size:9},callback:v=>v+'%'},max:100}}}
+  });
+}
+function renderPayer(){
+  if(CH['payer-bar'])return;
+  const PAYERS=[{"payer":"Tennessee BCBS","received":376,"approved":107,"appr_rate":28.5},{"payer":"Anthem BCBS KY","received":235,"approved":76,"appr_rate":32.3},{"payer":"Anthem BCBS","received":170,"approved":43,"appr_rate":25.3},{"payer":"Anthem","received":103,"approved":39,"appr_rate":37.9},{"payer":"Medicare","received":102,"approved":86,"appr_rate":84.3},{"payer":"Illinois BCBS","received":41,"approved":27,"appr_rate":65.9},{"payer":"UMR","received":28,"approved":12,"appr_rate":42.9},{"payer":"Arkansas BCBS","received":23,"approved":5,"appr_rate":21.7},{"payer":"Ambetter","received":21,"approved":13,"appr_rate":61.9},{"payer":"United Healthcare","received":17,"approved":0,"appr_rate":0.0}];
+  kc('payer-bar');CH['payer-bar']=new Chart(document.getElementById('c-payer-bar'),{type:'bar',
+    data:{labels:PAYERS.map(p=>p.payer.length>20?p.payer.slice(0,18)+'…':p.payer),
+      datasets:[{label:'Approval rate',data:PAYERS.map(p=>p.appr_rate),
+        backgroundColor:PAYERS.map(p=>p.appr_rate>=60?'#059669CC':p.appr_rate>=45?COL+'CC':'#DC2626CC')}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{x:{ticks:{font:{size:9},maxRotation:40}},y:{ticks:{font:{size:9},callback:v=>v+'%'},max:100}}}
+  });
+}
+renderOV();
+</script>
+</body></html>
